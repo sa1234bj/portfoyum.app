@@ -1,0 +1,553 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover"/>
+<meta name="theme-color" content="#0f172a"/>
+<meta name="apple-mobile-web-app-capable" content="yes"/>
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
+<meta name="apple-mobile-web-app-title" content="Portföyüm"/>
+<title>Portföyüm — Portföy & Temettü Takip</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
+<style>
+:root {
+  --bg: #0b1120;
+  --card: #1e293b;
+  --card2: #334155;
+  --text: #f8fafc;
+  --muted: #94a3b8;
+  --primary: #3b82f6;
+  --primary2: #2563eb;
+  --success: #22c55e;
+  --danger: #ef4444;
+  --border: #334155;
+  --shadow: 0 4px 24px rgba(0,0,0,.35);
+  --radius: 18px;
+  --safe-t: env(safe-area-inset-top, 0px);
+  --safe-b: env(safe-area-inset-bottom, 0px);
+}
+* { margin:0; padding:0; box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
+body {
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  min-height: 100vh;
+  padding-bottom: calc(100px + var(--safe-b));
+  -webkit-font-smoothing: antialiased;
+}
+.header {
+  position: sticky; top: 0; z-index: 50;
+  padding: calc(16px + var(--safe-t)) 20px 14px;
+  background: rgba(11,17,32,.92);
+  backdrop-filter: blur(16px);
+  border-bottom: 1px solid var(--border);
+  display: flex; justify-content: space-between; align-items: center;
+}
+.logo {
+  font-weight: 800; font-size: 1.25rem; letter-spacing: -0.5px;
+  display: flex; align-items: center; gap: 8px;
+}
+.logo span {
+  width: 32px; height: 32px; border-radius: 10px;
+  background: linear-gradient(135deg, #3b82f6, #8b5cf6);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 0.9rem; color: white;
+}
+.icon-btn {
+  width: 40px; height: 40px; border-radius: 12px;
+  border: 1px solid var(--border); background: var(--card);
+  color: var(--text); font-size: 1.1rem; cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+}
+.summary {
+  padding: 18px 16px 8px;
+  display: grid; grid-template-columns: 1fr 1fr; gap: 12px;
+}
+.summary-card {
+  background: var(--card);
+  border-radius: var(--radius);
+  padding: 16px;
+  border: 1px solid var(--border);
+  box-shadow: var(--shadow);
+}
+.summary-card.full { grid-column: 1 / -1; }
+.summary-label { font-size: 0.75rem; color: var(--muted); font-weight: 600; margin-bottom: 6px; }
+.summary-value { font-size: 1.35rem; font-weight: 800; letter-spacing: -0.5px; }
+.summary-value.green { color: var(--success); }
+.summary-sub { font-size: 0.78rem; color: var(--muted); margin-top: 4px; }
+.section { padding: 12px 16px 0; }
+.section-title {
+  font-size: 0.8rem; font-weight: 700; color: var(--muted);
+  text-transform: uppercase; letter-spacing: 0.4px;
+  margin-bottom: 10px; padding-left: 2px;
+}
+.asset-card {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  padding: 14px;
+  margin-bottom: 10px;
+  display: flex; align-items: center; gap: 12px;
+  box-shadow: var(--shadow);
+  transition: transform .12s;
+}
+.asset-card:active { transform: scale(.98); }
+.asset-icon {
+  width: 44px; height: 44px; border-radius: 12px;
+  background: linear-gradient(135deg, #3b82f6, #6366f1);
+  display: flex; align-items: center; justify-content: center;
+  font-weight: 800; font-size: 0.85rem; color: white; flex-shrink: 0;
+}
+.asset-body { flex: 1; min-width: 0; }
+.asset-name { font-weight: 700; font-size: 0.95rem; margin-bottom: 3px; }
+.asset-meta { font-size: 0.75rem; color: var(--muted); }
+.asset-right { text-align: right; }
+.asset-total { font-weight: 700; font-size: 0.95rem; }
+.asset-change { font-size: 0.72rem; margin-top: 2px; }
+.asset-change.pos { color: var(--success); }
+.asset-change.neg { color: var(--danger); }
+.empty {
+  text-align: center; padding: 50px 24px; color: var(--muted);
+}
+.empty .big { font-size: 3rem; margin-bottom: 12px; opacity: .5; }
+.empty h3 { color: var(--text); font-size: 1.05rem; margin-bottom: 6px; }
+.fab {
+  position: fixed; bottom: calc(24px + var(--safe-b)); right: 20px;
+  width: 60px; height: 60px; border-radius: 50%; border: none;
+  background: linear-gradient(135deg, #3b82f6, #8b5cf6);
+  color: white; font-size: 1.8rem;
+  box-shadow: 0 10px 30px rgba(59,130,246,.45);
+  cursor: pointer; z-index: 40;
+  display: flex; align-items: center; justify-content: center;
+  transition: transform .15s;
+}
+.fab:active { transform: scale(.9); }
+.overlay {
+  position: fixed; inset: 0; background: rgba(0,0,0,.65);
+  z-index: 100; display: none; align-items: flex-end; justify-content: center;
+  backdrop-filter: blur(8px);
+}
+.overlay.active { display: flex; }
+.sheet {
+  background: var(--card); width: 100%; max-width: 480px;
+  border-radius: 24px 24px 0 0;
+  padding: 16px 20px calc(28px + var(--safe-b));
+  max-height: 92vh; overflow-y: auto;
+  animation: sheetUp .3s cubic-bezier(.22,1,.36,1);
+}
+@keyframes sheetUp { from { transform: translateY(100%); } to { transform: translateY(0); } }
+.handle { width: 40px; height: 4px; background: var(--border); border-radius: 2px; margin: 0 auto 16px; }
+.sheet-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 18px; }
+.sheet-title { font-size: 1.15rem; font-weight: 750; }
+.xbtn {
+  width: 34px; height: 34px; border-radius: 50%; border: none;
+  background: var(--card2); color: var(--text); font-size: 1.1rem; cursor: pointer;
+}
+.fg { margin-bottom: 14px; }
+.fl { display: block; font-size: 0.78rem; font-weight: 600; color: var(--muted); margin-bottom: 6px; }
+.fi {
+  width: 100%; padding: 13px 14px; border: 1.5px solid var(--border);
+  border-radius: 12px; background: var(--bg); color: var(--text);
+  font-size: 1rem; font-family: inherit;
+}
+.fi:focus { outline: none; border-color: var(--primary); }
+.btn {
+  width: 100%; padding: 14px; border: none; border-radius: 14px;
+  background: linear-gradient(135deg, #3b82f6, #6366f1); color: white;
+  font-size: 1rem; font-weight: 700; cursor: pointer; font-family: inherit;
+  margin-top: 8px;
+}
+.btn.danger { background: linear-gradient(135deg, #ef4444, #dc2626); }
+.btn.sec { background: var(--card2); color: var(--text); }
+.btn.outline {
+  background: transparent; border: 1.5px solid var(--border); color: var(--text);
+}
+.actions { display: flex; gap: 10px; }
+.actions .btn { flex: 1; }
+.scan-box {
+  border: 2px dashed var(--border);
+  border-radius: 14px;
+  padding: 20px;
+  text-align: center;
+  margin-bottom: 16px;
+  background: var(--bg);
+}
+.scan-box p { font-size: 0.85rem; color: var(--muted); margin: 8px 0 12px; }
+.ocr-status {
+  font-size: 0.85rem;
+  color: var(--primary);
+  text-align: center;
+  margin: 10px 0;
+  display: none;
+}
+.ocr-status.show { display: block; }
+.toast {
+  position: fixed; bottom: calc(100px + var(--safe-b)); left: 50%;
+  transform: translateX(-50%) translateY(80px);
+  background: #f8fafc; color: #0f172a; padding: 12px 20px;
+  border-radius: 99px; font-size: 0.9rem; font-weight: 600;
+  z-index: 200; opacity: 0; transition: all .3s; white-space: nowrap;
+}
+.toast.show { transform: translateX(-50%) translateY(0); opacity: 1; }
+</style>
+</head>
+<body>
+
+<header class="header">
+  <div class="logo"><span>P</span>Portföyüm</div>
+  <button class="icon-btn" onclick="clearAll()" title="Tümünü sil">🗑️</button>
+</header>
+
+<div class="summary">
+  <div class="summary-card full">
+    <div class="summary-label">Toplam Portföy Değeri</div>
+    <div class="summary-value" id="totalValue">₺0</div>
+    <div class="summary-sub" id="totalGain">Kazanç/Kayıp: ₺0</div>
+  </div>
+  <div class="summary-card">
+    <div class="summary-label">Yıllık Temettü</div>
+    <div class="summary-value green" id="totalDiv">₺0</div>
+  </div>
+  <div class="summary-card">
+    <div class="summary-label">Varlık Sayısı</div>
+    <div class="summary-value" id="assetCount">0</div>
+  </div>
+</div>
+
+<div class="section">
+  <div class="section-title">Varlıklarım</div>
+  <div id="assetList"></div>
+</div>
+
+<button class="fab" onclick="openModal()">+</button>
+
+<!-- ADD / EDIT MODAL -->
+<div class="overlay" id="modal">
+  <div class="sheet">
+    <div class="handle"></div>
+    <div class="sheet-head">
+      <div class="sheet-title" id="modalTitle">Yeni Varlık Ekle</div>
+      <button class="xbtn" onclick="closeModal()">✕</button>
+    </div>
+
+    <!-- SCAN SECTION -->
+    <div class="scan-box" id="scanBox">
+      <div style="font-size:1.6rem">📸</div>
+      <p>Borsa uygulamasından ekran görüntüsü yükle<br>Otomatik doldurmayı dene</p>
+      <button class="btn outline" onclick="document.getElementById('fileInput').click()" style="margin:0">
+        Galeriden Seç veya Fotoğraf Çek
+      </button>
+      <input type="file" id="fileInput" accept="image/*" style="display:none" onchange="handleImage(event)">
+    </div>
+    <div class="ocr-status" id="ocrStatus">Okunuyor, lütfen bekle...</div>
+
+    <div class="fg">
+      <label class="fl">Varlık Adı (ör: THYAO, USD, Gram Altın)</label>
+      <div style="display:flex;gap:8px">
+        <input class="fi" id="aName" placeholder="THYAO" maxlength="20" style="flex:1"
+          oninput="tryAutoFill()" onchange="tryAutoFill()" onblur="tryAutoFill()">
+        <button type="button" class="btn sec" style="width:auto;padding:0 14px;margin:0;font-size:0.85rem;white-space:nowrap"
+          onclick="tryAutoFill(true)">Doldur</button>
+      </div>
+    </div>
+    <div class="fg">
+      <label class="fl">Adet / Miktar</label>
+      <input class="fi" id="aQty" type="number" inputmode="decimal" placeholder="100">
+    </div>
+    <div class="fg">
+      <label class="fl">Ortalama Maliyet (₺)</label>
+      <input class="fi" id="aCost" type="number" inputmode="decimal" placeholder="85.50">
+    </div>
+    <div class="fg">
+      <label class="fl">Güncel Fiyat (₺)</label>
+      <input class="fi" id="aPrice" type="number" inputmode="decimal" placeholder="92.30">
+    </div>
+    <div class="fg">
+      <label class="fl">Hisse Başı Yıllık Temettü (₺) — opsiyonel</label>
+      <input class="fi" id="aDiv" type="number" inputmode="decimal" placeholder="3.50">
+      <div id="divNote" style="font-size:0.75rem;color:var(--muted);margin-top:8px;line-height:1.4">
+        💡 Hisse kodunu yazınca fiyat + temettü otomatik gelebilir. Güncel değilse değiştirebilirsin.
+      </div>
+    </div>
+
+    <div class="actions" id="modalActions">
+      <button class="btn" onclick="saveAsset()">Kaydet</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+let assets = JSON.parse(localStorage.getItem('portfoyum_v1') || '[]');
+let editingId = null;
+
+function formatMoney(n) {
+  return '₺' + Number(n || 0).toLocaleString('tr-TR', { minimumFractionDigits: 0, maximumFractionDigits: 2 });
+}
+
+function calc() {
+  let totalValue = 0, totalCost = 0, totalDiv = 0;
+  assets.forEach(a => {
+    const val = a.qty * a.price;
+    const cost = a.qty * a.cost;
+    totalValue += val;
+    totalCost += cost;
+    totalDiv += a.qty * (a.div || 0);
+  });
+  const gain = totalValue - totalCost;
+  document.getElementById('totalValue').textContent = formatMoney(totalValue);
+  document.getElementById('totalDiv').textContent = formatMoney(totalDiv);
+  document.getElementById('assetCount').textContent = assets.length;
+  const gainEl = document.getElementById('totalGain');
+  gainEl.textContent = (gain >= 0 ? 'Kazanç: ' : 'Kayıp: ') + formatMoney(Math.abs(gain));
+  gainEl.style.color = gain >= 0 ? 'var(--success)' : 'var(--danger)';
+}
+
+
+// Popüler hisseler: tahmini güncel fiyat + yıllık net temettü
+const STOCK_DB = {
+  "THYAO": { price: 285, div: 2.50 },
+  "GARAN": { price: 118, div: 1.80 },
+  "AKBNK": { price: 62, div: 1.60 },
+  "YKBNK": { price: 28, div: 1.20 },
+  "EREGL": { price: 52, div: 1.10 },
+  "SISE": { price: 48, div: 0.50 },
+  "TUPRS": { price: 165, div: 8.50 },
+  "KCHOL": { price: 195, div: 2.20 },
+  "SAHOL": { price: 92, div: 1.40 },
+  "ASELS": { price: 78, div: 0.70 },
+  "BIMAS": { price: 520, div: 4.50 },
+  "FROTO": { price: 980, div: 6.00 },
+  "TOASO": { price: 310, div: 3.80 },
+  "SASA": { price: 4.2, div: 0.15 },
+  "PETKM": { price: 18, div: 0.40 },
+  "TCELL": { price: 95, div: 1.90 },
+  "TTKOM": { price: 48, div: 0.85 },
+  "KOZAL": { price: 32, div: 1.30 },
+  "KOZAA": { price: 28, div: 0.90 },
+  "HEKTS": { price: 12, div: 0.25 },
+  "CCOLA": { price: 620, div: 2.10 },
+  "AEFES": { price: 175, div: 1.50 },
+  "ULKER": { price: 115, div: 0.80 },
+  "MGROS": { price: 480, div: 1.70 },
+  "SOKM": { price: 220, div: 0.60 },
+  "MAVI": { price: 95, div: 1.10 },
+  "DOAS": { price: 280, div: 2.40 },
+  "ENKAI": { price: 48, div: 0.55 },
+  "ISCTR": { price: 14, div: 0.70 },
+  "HALKB": { price: 16, div: 0.45 },
+  "VAKBN": { price: 22, div: 0.50 },
+  "ALARK": { price: 115, div: 1.20 },
+  "OTKAR": { price: 480, div: 4.00 },
+  "ASUZU": { price: 95, div: 1.80 },
+  "GUBRF": { price: 280, div: 3.80 },
+  "ASTOR": { price: 95, div: 1.86 },
+  "FENER": { price: 95, div: 0 },
+  "GSRAY": { price: 28, div: 0 },
+  "BJKAS": { price: 18, div: 0 }
+};
+
+function tryAutoFill(showMsg) {
+  const raw = document.getElementById('aName').value || '';
+  const name = raw.trim().toUpperCase();
+  const priceInput = document.getElementById('aPrice');
+  const divInput = document.getElementById('aDiv');
+  const note = document.getElementById('divNote');
+  
+  if (!name) return;
+  
+  if (STOCK_DB[name]) {
+    priceInput.value = STOCK_DB[name].price;
+    divInput.value = STOCK_DB[name].div;
+    if (note) note.innerHTML = '⚡ Fiyat + Temettü yüklendi. Güncel değilse değiştirebilirsin.';
+    if (showMsg) showToast(name + ' bilgileri dolduruldu');
+  } else {
+    if (note) note.innerHTML = '💡 Bu hisse listede yok. Fiyat ve temettüyü manuel gir.';
+    if (showMsg) showToast('Liste de yok, manuel gir');
+  }
+}
+
+function render() {
+  calc();
+  const el = document.getElementById('assetList');
+  if (!assets.length) {
+    el.innerHTML = `<div class="empty"><div class="big">📊</div><h3>Henüz varlık yok</h3><p>Sağ alttaki + butonuyla ilk hissenizi veya varlığınızı ekleyin.</p></div>`;
+    return;
+  }
+  el.innerHTML = assets.map(a => {
+    const total = a.qty * a.price;
+    const cost = a.qty * a.cost;
+    const gain = total - cost;
+    const pct = cost ? ((gain / cost) * 100).toFixed(1) : 0;
+    return `<div class="asset-card" onclick="openEdit('${a.id}')">
+      <div class="asset-icon">${a.name.substring(0,3).toUpperCase()}</div>
+      <div class="asset-body">
+        <div class="asset-name">${a.name}</div>
+        <div class="asset-meta">${a.qty} adet • Ort: ${formatMoney(a.cost)}</div>
+      </div>
+      <div class="asset-right">
+        <div class="asset-total">${formatMoney(total)}</div>
+        <div class="asset-change ${gain >= 0 ? 'pos' : 'neg'}">${gain >= 0 ? '+' : ''}${pct}%</div>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function openModal() {
+  editingId = null;
+  document.getElementById('modalTitle').textContent = 'Yeni Varlık Ekle';
+  document.getElementById('aName').value = '';
+  document.getElementById('aQty').value = '';
+  document.getElementById('aCost').value = '';
+  document.getElementById('aPrice').value = '';
+  document.getElementById('aDiv').value = '';
+  document.getElementById('scanBox').style.display = 'block';
+  document.getElementById('ocrStatus').classList.remove('show');
+  document.getElementById('modalActions').innerHTML = `<button class="btn" onclick="saveAsset()">Kaydet</button>`;
+  document.getElementById('modal').classList.add('active');
+}
+
+function openEdit(id) {
+  const a = assets.find(x => x.id === id);
+  if (!a) return;
+  editingId = id;
+  document.getElementById('modalTitle').textContent = 'Varlığı Düzenle';
+  document.getElementById('aName').value = a.name;
+  document.getElementById('aQty').value = a.qty;
+  document.getElementById('aCost').value = a.cost;
+  document.getElementById('aPrice').value = a.price;
+  document.getElementById('aDiv').value = a.div || '';
+  document.getElementById('scanBox').style.display = 'none';
+  document.getElementById('modalActions').innerHTML = `
+    <button class="btn sec" onclick="deleteAsset('${id}')">Sil</button>
+    <button class="btn" onclick="saveAsset()">Kaydet</button>`;
+  document.getElementById('modal').classList.add('active');
+}
+
+function closeModal() {
+  document.getElementById('modal').classList.remove('active');
+  editingId = null;
+}
+
+function saveAsset() {
+  const name = document.getElementById('aName').value.trim().toUpperCase();
+  const qty = parseFloat(document.getElementById('aQty').value) || 0;
+  const cost = parseFloat(document.getElementById('aCost').value) || 0;
+  const price = parseFloat(document.getElementById('aPrice').value) || 0;
+  const div = parseFloat(document.getElementById('aDiv').value) || 0;
+
+  if (!name || qty <= 0) {
+    showToast('Ad ve adet zorunlu');
+    return;
+  }
+
+  if (editingId) {
+    const a = assets.find(x => x.id === editingId);
+    if (a) {
+      a.name = name; a.qty = qty; a.cost = cost; a.price = price; a.div = div;
+    }
+    showToast('Güncellendi');
+  } else {
+    assets.push({
+      id: Date.now().toString(36) + Math.random().toString(36).slice(2,5),
+      name, qty, cost, price, div
+    });
+    showToast('Varlık eklendi');
+  }
+  localStorage.setItem('portfoyum_v1', JSON.stringify(assets));
+  closeModal();
+  render();
+}
+
+function deleteAsset(id) {
+  assets = assets.filter(a => a.id !== id);
+  localStorage.setItem('portfoyum_v1', JSON.stringify(assets));
+  closeModal();
+  render();
+  showToast('Silindi');
+}
+
+function clearAll() {
+  if (!assets.length) return;
+  if (confirm('Tüm varlıkları silmek istediğine emin misin?')) {
+    assets = [];
+    localStorage.setItem('portfoyum_v1', JSON.stringify(assets));
+    render();
+    showToast('Tümü silindi');
+  }
+}
+
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  clearTimeout(t._t);
+  t._t = setTimeout(() => t.classList.remove('show'), 2000);
+}
+
+// ========== OCR / SCREENSHOT FEATURE ==========
+async function handleImage(e) {
+  const file = e.target.files[0];
+  if (!file) return;
+
+  const status = document.getElementById('ocrStatus');
+  status.textContent = 'Okunuyor, lütfen bekle...';
+  status.classList.add('show');
+
+  try {
+    const result = await Tesseract.recognize(file, 'tur+eng', {
+      logger: m => {
+        if (m.status === 'recognizing text') {
+          status.textContent = `Okunuyor... %${Math.round(m.progress * 100)}`;
+        }
+      }
+    });
+
+    const text = result.data.text;
+    console.log('OCR Sonucu:', text);
+    parseOCRText(text);
+    status.textContent = 'Okuma tamamlandı. Kontrol edip kaydedin.';
+    setTimeout(() => status.classList.remove('show'), 3000);
+    showToast('Bilgiler dolduruldu, kontrol et');
+  } catch (err) {
+    console.error(err);
+    status.textContent = 'Okuma başarısız. Manuel girin.';
+    showToast('Okuma başarısız');
+  }
+
+  e.target.value = '';
+}
+
+function parseOCRText(text) {
+  // Basit regex ile olası verileri yakalamaya çalış
+  const lines = text.split('\n').map(l => l.trim()).filter(Boolean);
+  const upperText = text.toUpperCase();
+
+  // Olası hisse kodları (3-5 harf büyük)
+  const codeMatch = upperText.match(/\b[A-Z]{3,5}\b/g);
+  if (codeMatch && codeMatch.length) {
+    // En sık görülen veya ilk mantıklı olanı al
+    const common = ['THYAO','GARAN','AKBNK','EREGL','SISE','TUPRS','KCHOL','SAHOL','ASELS','BIMAS','FROTO','TOASO','SASA','HEKTS','PETKM'];
+    let found = codeMatch.find(c => common.includes(c)) || codeMatch[0];
+    document.getElementById('aName').value = found;
+  }
+
+  // Sayıları bul
+  const numbers = text.match(/(\d+[.,]\d+|\d+)/g) || [];
+  const nums = numbers.map(n => parseFloat(n.replace(',', '.'))).filter(n => !isNaN(n) && n > 0);
+
+  if (nums.length >= 1) document.getElementById('aQty').value = nums[0];
+  if (nums.length >= 2) document.getElementById('aCost').value = nums[1];
+  if (nums.length >= 3) document.getElementById('aPrice').value = nums[2];
+}
+
+document.getElementById('modal').addEventListener('click', e => {
+  if (e.target === e.currentTarget) closeModal();
+});
+
+render();
+</script>
+</body>
+</html>
